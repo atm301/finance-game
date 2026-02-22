@@ -13,6 +13,46 @@ const GAME_DATA = {
         { id: 'retire', name: '🏖️ 退休準備期', age: [45, 60], rounds: 5, baseIncome: 400, baseExpense: 250 }
     ],
 
+    // 職業系統 (Career System)
+    careers: [
+        { id: 'student', name: '學生', minWisdom: 0, baseSalary: 50, desc: '半工半讀，收入有限。' },
+        { id: 'intern', name: '實習生', minWisdom: 3, baseSalary: 120, desc: '累積經驗中。' },
+        { id: 'junior', name: '初級職員', minWisdom: 5, baseSalary: 250, desc: '穩定的職場起點。' },
+        { id: 'senior', name: '高級專員', minWisdom: 8, minPerseverance: 5, baseSalary: 500, desc: '專業領域的佼佼者。' },
+        { id: 'manager', name: '部門經理', minWisdom: 10, minSocial: 8, baseSalary: 1000, desc: '帶領團隊，高薪高壓。' },
+        { id: 'entrepreneur', name: '創業者', minWisdom: 14, minLuck: 5, baseSalary: 1500, desc: '開創未來，收入浮動大。' },
+        { id: 'cfo', name: '財務長 CFO', minWisdom: 15, minPerseverance: 10, minSocial: 12, baseSalary: 2500, desc: '主導企業財務策略，年薪優渥。' },
+        { id: 'angel_investor', name: '天使投資人', minWisdom: 18, minPerseverance: 12, minSocial: 15, minLuck: 10, baseSalary: 4000, desc: '以資金扶持新創，分享高額報酬。' },
+        { id: 'tycoon', name: '商業大亨', minWisdom: 20, minPerseverance: 15, minSocial: 18, minLuck: 12, baseSalary: 8000, desc: '站上商業頂峰，掌控市場。' }
+    ],
+
+    // 市場波動參數 (Market Volatility)
+    market: {
+        states: [
+            { id: 'bear', name: '🐻 熊市 (低迷)', multiplier: 0.5, chance: 0.2, color: '#ef4444' },
+            { id: 'stable', name: '⚖️ 平穩期', multiplier: 1.0, chance: 0.5, color: '#94a3b8' },
+            { id: 'bull', name: '🐂 牛市 (繁榮)', multiplier: 1.5, chance: 0.3, color: '#10b981' }
+        ]
+    },
+
+    // 角色特質系統 (Character Traits)
+    traits: [
+        { id: 'frugal', name: '💸 節儉者', desc: '每月支出減少 20%，但社交屬性成長減半。', effect: { expenseMultiplier: 0.8, socialRate: 0.5 } },
+        { id: 'visionary', name: '🔭 遠見者', desc: '投資報酬潛力增加 10%，但主動收入略低。', effect: { investBonus: 1.1, incomeMultiplier: 0.95 } },
+        { id: 'risk_taker', name: '🎲 冒險家', desc: '股市報酬增加 20%，但負面事件損失也增加 20%。', effect: { stockBonus: 1.2, negativeMultiplier: 1.2 } },
+        { id: 'saver', name: '🐷 儲蓄達人', desc: '現金存款利息翻倍。', effect: { savingsRate: 2.0 } },
+        { id: 'socialite', name: '🥂 社交達人', desc: '社交效果翻倍，且更容易觸發正面事件。', effect: { socialBonus: 2.0, luckBonus: 1 } }
+    ],
+
+    // 豪華物件/資產 (Luxuries & Assets)
+    luxuries: [
+        { id: 'sports_car', name: '🏎️ 豪華跑車', cost: 1500, loanOption: true, downPayment: 450, loanAmount: 1050, maintenance: 100, effect: { social: 2, luck: 1 }, desc: '身份的象徵，但維護費高。' },
+        { id: 'luxury_watch', name: '⌚ 名貴腕錶', cost: 500, maintenance: 0, effect: { social: 1 }, desc: '提升品味，價值穩定。' },
+        { id: 'mansion', name: '🏰 獨棟別墅', cost: 5000, loanOption: true, downPayment: 1000, loanAmount: 4000, maintenance: 200, effect: { social: 3, luck: 2 }, desc: '頂級居住體驗。' },
+        { id: 'yacht', name: '🛥️ 豪華遊艇', cost: 8000, loanOption: true, downPayment: 2000, loanAmount: 6000, maintenance: 300, effect: { social: 4, luck: 3, wisdom: 1 }, desc: '財富的極致彰顯。' },
+        { id: 'private_jet', name: '✈️ 私人飛機', cost: 20000, loanOption: true, downPayment: 5000, loanAmount: 15000, maintenance: 500, effect: { social: 5, luck: 4, wisdom: 2 }, desc: '全球商業往來的最高效工具。' }
+    ],
+
     // 角色創建問題庫（擴充版）
     questions: [
         {
@@ -126,7 +166,12 @@ const GAME_DATA = {
             { id: 'promotion', title: '📊 升職加薪', desc: '恭喜升職！薪水大幅增加。', effect: { incomeBonus: 50, social: 1 } },
             { id: 'side_income', title: '💼 額外收入', desc: '兼職工作帶來額外收入！', effect: { cash: 60 } },
             { id: 'friend_treat', title: '🍜 朋友請客', desc: '朋友心情好請你吃大餐！', effect: { social: 1 } },
-            { id: 'market_boom', title: '🚀 市場大漲', desc: '股市大漲，你的投資翻倍！', effect: { investMultiplier: 1.2 } }
+            { id: 'market_boom', title: '🚀 市場大漲', desc: '股市大漲，你的投資翻倍！', effect: { investMultiplier: 1.2 } },
+            { id: 'lucky_lottery', title: '🎰 幸運彩票', desc: '隨手買了張彩券，竟然中獎了！', effect: { cash: 500, luck: 2 } },
+            { id: 'lucky_streak', title: '🍀 幸運連連', desc: '最近事事順心，運氣大提升！', effect: { luck: 3 } },
+            { id: 'lucky_charm', title: '✨ 幸運符到手', desc: '朋友送你一個幸運護身符。', effect: { luck: 1 } },
+            { id: 'wisdom_revelation', title: '💡 頓悟時刻', desc: '讀到一本理財好書，茅塞頓開！', effect: { wisdom: 2, cash: 0 } },
+            { id: 'social_network', title: '🤝 拓展人脈', desc: '參加商業晚宴，結識多位貴人！', effect: { social: 2, incomeBonus: 30 } }
         ],
         negative: [
             { id: 'sick', title: '🏥 生病了', desc: '身體不舒服，需要看醫生。', effect: { cash: -80 }, category: 'health' },
@@ -140,7 +185,13 @@ const GAME_DATA = {
             { id: 'inflation', title: '📈 物價上漲', desc: '生活成本增加了。', effect: { expenseBonus: 10 } },
             { id: 'bad_investment', title: '💸 投資失利', desc: '一筆投資虧損了。', effect: { cash: -80 } },
             { id: 'family_emergency', title: '👨‍👩‍👧 家庭急事', desc: '家人需要幫忙，花費一筆錢。', effect: { cash: -70 } },
-            { id: 'market_crash', title: '📉 市場崩盤', desc: '股市大跌，投資大幅縮水。', effect: { investMultiplier: 0.7 } }
+            { id: 'market_crash', title: '📉 市場崩盤', desc: '股市大跌，投資大幅縮水。', effect: { investMultiplier: 0.7 } },
+            { id: 'credit_card_bill', title: '💳 信用卡爆表', desc: '信用卡帳單驚人，被迫借款支付！', effect: { cash: -300, debt: 300 } },
+            { id: 'medical_emergency', title: '🚑 醫療緊急', desc: '突發重病！醫療費用高昂，現金不足只能舉債。', effect: { cash: -500, debt: 300, luck: -2 }, category: 'health' },
+            { id: 'bad_luck_streak', title: '🌧️ 黴運連連', desc: '最近諸事不順，運氣大降。', effect: { luck: -2, cash: -50 } },
+            { id: 'luxury_breakdown', title: '💔 豪車故障', desc: '豪華座駕突然拋錨，高額修繕費讓你措手不及！', effect: { cash: -500, debt: 200 }, requiresLuxury: true },
+            { id: 'scam_loss', title: '🕵️ 遭受詐騙', desc: '不慎點進釣魚連結，帳戶被盜！', effect: { cash: -400, luck: -1 } },
+            { id: 'court_fine', title: '⚖️ 法律糾紛', desc: '遭人提告，敗訴後需支付賠償金與律師費。', effect: { cash: -300, debt: 200, social: -1 } }
         ],
         decision: [
             {
@@ -252,6 +303,97 @@ const GAME_DATA = {
                     { text: '去！享受人生', effect: { cash: -300, social: 2, luck: 1 } },
                     { text: '太貴了不去', effect: {}, missedOpportunity: true }
                 ]
+            },
+            {
+                id: 'marriage_proposal',
+                title: '💍 談婚論嫁',
+                desc: '與另一半感情穩定，考慮走入職場新階段（結婚）嗎？',
+                choices: [
+                    { text: '舉辦浪漫婚禮 (1000)', effect: { cash: -1000, familyStatus: 'married', incomeBonus: 200, expenseBonus: 150 } },
+                    { text: '簡單公證 (200)', effect: { cash: -200, familyStatus: 'married', incomeBonus: 200, expenseBonus: 120 } },
+                    { text: '再等一下', effect: {} }
+                ]
+            },
+            {
+                id: 'baby_plan',
+                title: '🍼 育兒驚喜',
+                desc: '迎接家中的新成員！雖然開銷會增加，但也會帶來動力。',
+                choices: [
+                    { text: '全力栽培', effect: { familyStatus: 'parent', expenseBonus: 300, perseverance: 3 } },
+                    { text: '普通生活', effect: { familyStatus: 'parent', expenseBonus: 150, perseverance: 1 } }
+                ],
+                condition: (player) => player.familyStatus === 'married'
+            },
+            {
+                id: 'luxury_opportunity',
+                title: '🏎️ 夢想座駕',
+                desc: '業務向你推薦一款限量版跑車，雖然價格昂貴，但能提升社交與運氣。',
+                choices: [
+                    { text: '全額買下 (1500)', effect: { cash: -1500, buyLuxury: 'sports_car' } },
+                    { text: '分期付款 (首付 450，貸款 1050)', effect: { cash: -450, debt: 1050, buyLuxury: 'sports_car' } },
+                    { text: '理性消費', effect: {} }
+                ],
+                condition: (player) => player.cash >= 450 && !player.luxuries.includes('sports_car')
+            },
+            {
+                id: 'yacht_invitation',
+                title: '🛥️ 豪華遊艇俱樂部',
+                desc: '高端商業圈邀你加入遊艇俱樂部，一艘豪華遊艇象徵著頂尖身份。',
+                choices: [
+                    { text: '全額購入 (8000)', effect: { cash: -8000, buyLuxury: 'yacht' } },
+                    { text: '分期付款 (首付 2000，貸款 6000)', effect: { cash: -2000, debt: 6000, buyLuxury: 'yacht' } },
+                    { text: '婉拒', effect: { missedOpportunity: true } }
+                ],
+                condition: (player) => player.stats.social >= 12 && !player.luxuries.includes('yacht')
+            },
+            {
+                id: 'loan_offer',
+                title: '🏦 銀行貸款方案',
+                desc: '銀行主動提供個人信用貸款方案，最高可借 1000 金幣，年利率 5%。',
+                choices: [
+                    { text: '借入 1000 金幣', effect: { cash: 1000, debt: 1000 } },
+                    { text: '借入 500 金幣', effect: { cash: 500, debt: 500 } },
+                    { text: '不需要', effect: {} }
+                ]
+            },
+            {
+                id: 'friend_borrow',
+                title: '👤 好友借錢',
+                desc: '多年好友說周轉不靈，想借 200 金幣，說下個月還。',
+                choices: [
+                    { text: '借出 200 金幣（50% 機率追不回）', effect: { cash: -200 }, friendLoan: true },
+                    { text: '婉拒（保住現金）', effect: { social: -1 } }
+                ]
+            },
+            {
+                id: 'lucky_oracle',
+                title: '🔮 神秘占星師',
+                desc: '街頭占星師說花 50 金幣可以改變你的命運，要試試嗎？',
+                choices: [
+                    { text: '花錢改運 (50)', effect: { cash: -50, luck: 3 } },
+                    { text: '不信這套', effect: { wisdom: 1 } }
+                ]
+            },
+            {
+                id: 'luxury_auction',
+                title: '🔨 豪宅拍賣會',
+                desc: '名人別墅以低價拍賣，這是千載難逢的機會！',
+                choices: [
+                    { text: '全額購入 (5000)', effect: { cash: -5000, buyLuxury: 'mansion' } },
+                    { text: '分期付款 (首付 1000，貸款 4000)', effect: { cash: -1000, debt: 4000, buyLuxury: 'mansion' } },
+                    { text: '放棄', effect: { missedOpportunity: true } }
+                ],
+                condition: (player) => player.cash >= 1000 && !player.luxuries.includes('mansion')
+            },
+            {
+                id: 'repay_debt',
+                title: '💳 提前還款優惠',
+                desc: '銀行推出提前還款優惠，可免 10% 違約金。立刻還清部分負債嗎？',
+                choices: [
+                    { text: '還清 30% 負債', effect: { repayDebtPercent: 0.3 } },
+                    { text: '繼續繳最低還款額', effect: {} }
+                ],
+                condition: (player) => player.debt > 0
             }
         ]
     },
@@ -272,30 +414,32 @@ const GAME_DATA = {
 
     // 知識測驗題庫
     quizzes: [
-        {
-            question: '什麼是複利？',
-            options: ['只有本金會產生利息', '利息也會再產生利息', '銀行收取的手續費', '政府收取的稅金'],
-            correct: 1
-        },
-        {
-            question: '以下哪種投資風險最低？',
-            options: ['股票', '房地產', '銀行定存', '創業'],
-            correct: 2
-        },
-        {
-            question: '72 法則是用來計算什麼？',
-            options: ['繳稅金額', '投資翻倍時間', '貸款利息', '保險費用'],
-            correct: 1
-        },
-        {
-            question: '分散投資的目的是？',
-            options: ['增加報酬', '降低風險', '節省時間', '簡化管理'],
-            correct: 1
-        },
-        {
-            question: '什麼是「延遲滿足」？',
-            options: ['立刻買想要的東西', '等待更好的時機再消費', '拒絕所有消費', '借錢消費'],
-            correct: 1
-        }
+        { question: '什麼是複利？', options: ['只有本金會產生利息', '利息也會再產生利息', '銀行收取的手續費', '政府收取的稅金'], correct: 1 },
+        { question: '以下哪種投資風險最低？', options: ['股票', '房地產', '銀行定存', '創業'], correct: 2 },
+        { question: '72 法則是用來計算什麼？', options: ['繳稅金額', '投資翻倍時間', '貸款利息', '保險費用'], correct: 1 },
+        { question: '分散投資的目的是？', options: ['增加報酬', '降低風險', '節省時間', '簡化管理'], correct: 1 },
+        { question: '什麼是「延遲滿足」？', options: ['立刻買想要的東西', '等待更好的時機再消費', '拒絕所有消費', '借錢消費'], correct: 1 }
+    ],
+
+    // 每回合問答題庫（依照期數）
+    roundQuizzes: [
+        // 早期（回合 1-10）
+        { round: 'early', question: '儲蓄的最大好處是？', options: ['立即享受', '應急與累積財富', '讓朋友羨慕', '減少工作壓力'], correct: 1, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'early', question: '月收入比月支出多，稱為？', options: ['赤字', '平衡', '盈餘', '負債'], correct: 2, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'early', question: '信用卡若每月只還「最低還款額」會怎樣？', options: ['沒問題', '累積高額利息', '提升信用評分', '獲得獎勵點數'], correct: 1, reward: { stat: 'perseverance', value: 1 } },
+        { round: 'early', question: '緊急預備金建議存多少月份的生活費？', options: ['1 個月', '3-6 個月', '12 個月以上', '可以不存'], correct: 1, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'early', question: '下列哪項是「負債」？', options: ['銀行存款', '股票', '信用卡欠款', '薪水'], correct: 2, reward: { stat: 'wisdom', value: 1 } },
+        // 中期（回合 11-20）
+        { round: 'mid', question: 'ETF 指數基金最大的優點是？', options: ['保證獲利', '分散風險且費用低', '不需要任何本金', '可以隨時贖回不虧損'], correct: 1, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'mid', question: '「複利」的關鍵要素是？', options: ['高報酬率', '時間', '大量資金', '專業知識'], correct: 1, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'mid', question: '牛市通常代表什麼？', options: ['股市下跌趨勢', '股市上漲趨勢', '市場低迷', '政治動盪'], correct: 1, reward: { stat: 'luck', value: 1 } },
+        { round: 'mid', question: '資產配置的目的是？', options: ['追求最高報酬', '降低整體風險', '規避所有稅務', '快速致富'], correct: 1, reward: { stat: 'wisdom', value: 1 } },
+        { round: 'mid', question: '通貨膨脹對現金儲蓄者的影響是？', options: ['購買力提升', '購買力下降', '沒有影響', '讓存款利息增加'], correct: 1, reward: { stat: 'perseverance', value: 1 } },
+        // 晚期（回合 21-25）
+        { round: 'late', question: '退休規劃中「4% 法則」指的是？', options: ['每年存收入的4%', '每年從資產提取4%生活費', '投資報酬率要達到4%', '退休年齡的4倍存款'], correct: 1, reward: { stat: 'wisdom', value: 2 } },
+        { round: 'late', question: '被動收入超過生活支出，代表達成了什麼？', options: ['財務破產', '財務自由', '財務危機', '財務保守'], correct: 1, reward: { stat: 'wisdom', value: 2 } },
+        { round: 'late', question: '公司的「本益比（P/E）」越高，通常代表？', options: ['股票便宜', '市場對未來成長有較高期待', '公司快要倒閉', '股息發得越多'], correct: 1, reward: { stat: 'wisdom', value: 2 } },
+        { round: 'late', question: '遺產規劃的核心目的是？', options: ['逃稅', '確保財富按意願傳承', '讓後代不用工作', '秘密藏錢'], correct: 1, reward: { stat: 'social', value: 1 } },
+        { round: 'late', question: '「再平衡（Rebalancing）」投資組合的意思是？', options: ['賣掉所有投資', '定期調整回目標資產配置比例', '增加高風險投資', '換一個銀行帳戶'], correct: 1, reward: { stat: 'wisdom', value: 2 } }
     ]
 };

@@ -43,20 +43,29 @@
 html,
 body {
     height: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
+    /* Allow overflow globally if content exceeds height */
 }
 
 body {
     font-family: var(--font-main);
-    background: var(--bg-gradient);
+    background-color: var(--bg-dark);
     color: var(--text-primary);
     line-height: 1.6;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* 由 .screen 處理捲動 */
 }
 
 #app {
     width: 100%;
-    height: 100%;
+    min-height: 100vh;
+    /* Ensure full height coverage */
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .screen {
@@ -64,8 +73,13 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
+    /* 使用 min-height 分開內容 */
     display: none;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    /* 允許分頁捲動 */
     opacity: 0;
     transition: opacity var(--transition-normal);
 }
@@ -73,6 +87,24 @@ body {
 .screen.active {
     display: flex;
     opacity: 1;
+}
+
+.game-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 20px;
+    padding: 20px;
+    min-height: 0;
+    /* Important for grid item content overflow */
+}
+
+@media (max-height: 800px) {
+    .game-main {
+        overflow-y: auto;
+        padding-bottom: 80px;
+        /* Space for mobile next button if needed */
+    }
 }
 
 .btn {
@@ -816,6 +848,110 @@ body {
 .compound-lesson h3 {
     margin-bottom: 12px;
     color: var(--accent-green);
+}
+
+/* 教學系統樣式 */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    /* 提高層級 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s ease;
+}
+
+.tutorial-overlay.transparent {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.tutorial-popup {
+    position: absolute;
+    width: 350px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    padding: 24px;
+    z-index: 10002;
+    pointer-events: auto;
+}
+
+.tutorial-highlight {
+    position: absolute;
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+    z-index: 10001;
+    pointer-events: none;
+    /* 確保高亮區域可以穿透點擊 */
+    transition: all 0.3s ease;
+}
+
+.tutorial-overlay.transparent .tutorial-highlight {
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+}
+
+/* 修正佈局裁切問題 */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* 允許全局捲動 */
+}
+
+#app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 20px;
+    padding: 20px;
+    min-height: 0;
+}
+
+@media (max-width: 1200px) {
+    .game-main {
+        grid-template-columns: 250px 1fr;
+    }
+
+    .panel-right {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 768px) {
+    .game-main {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-left,
+    .panel-center,
+    .panel-right {
+        grid-column: auto;
+    }
+}
+
+/* 確保按鈕區域始終可見 */
+.action-buttons {
+    margin-top: auto;
+    padding: 20px 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
 /* 彈窗 */

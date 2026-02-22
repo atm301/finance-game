@@ -12,39 +12,46 @@ const Tutorial = {
             position: 'center'
         },
         {
-            id: 'character',
-            title: '🌟 創建你的角色',
-            content: '回答問題來決定你的初始屬性：智慧、毅力、社交、運氣。這些屬性會影響你的收入和機會！',
-            highlight: '.stats-preview',
+            id: 'panel_left',
+            title: '🌟 你的角色資訊',
+            content: '左側面板顯示你的角色屬性（智慧、毅力、社交、運氣），這些屬性會影響你的收入與獲得的機會！',
+            highlight: '.panel-left',
             position: 'right'
         },
         {
             id: 'finance',
             title: '💰 財務面板',
-            content: '這裡顯示你的財務狀況：現金、投資、負債和淨值。注意觀察你的月收入與支出！',
+            content: '右側顯示你的財務狀況：現金、投資資產、負債和總淨值。注意觀察你的月收入與支出平衡！',
             highlight: '.finance-panel',
             position: 'left'
         },
         {
             id: 'actions',
             title: '🎮 選擇行動',
-            content: '每回合你可以選擇 2 個行動：儲蓄、投資、消費或學習。做出明智的選擇！',
+            content: '每回合可以選擇 2 個行動：儲蓄增加利息、投資讓錢生錢、消費提升社交、學習增加智慧！',
             highlight: '.action-buttons',
             position: 'top'
         },
         {
             id: 'invest',
             title: '📈 投資與複利',
-            content: '投資是讓錢生錢的方法！越早開始投資，複利效果越強大。看看右邊的成長曲線！',
+            content: '點擊「投資」按鈕，選擇投資項目與金額。越早開始投資，複利效果越強大！觀察右側成長曲線。',
             highlight: '.compound-panel',
             position: 'left'
         },
         {
             id: 'events',
             title: '🎲 隨機事件',
-            content: '遊戲中會發生各種事件：有好有壞！保險可以減輕意外損失。',
+            content: '遊戲中會發生各種事件（有好有壞）！某些事件需要你做決策，保險可以減輕意外損失。',
             highlight: '.event-area',
             position: 'bottom'
+        },
+        {
+            id: 'luxury_tutorial',
+            title: '🏎️ 豪華資產',
+            content: '當你累積足夠財富時，透過特殊事件可以購買豪華資產。它們能提升屬性，但也會增加每月支出！',
+            highlight: '.luxury-panel',
+            position: 'left'
         },
         {
             id: 'compound',
@@ -142,9 +149,12 @@ const Tutorial = {
 
         // 高亮元素
         const highlight = document.getElementById('tutorial-highlight');
+        let targetFound = false;
+
         if (step.highlight) {
             const target = document.querySelector(step.highlight);
             if (target) {
+                targetFound = true;
                 const rect = target.getBoundingClientRect();
                 highlight.style.display = 'block';
                 highlight.style.top = `${rect.top - 5}px`;
@@ -152,11 +162,19 @@ const Tutorial = {
                 highlight.style.width = `${rect.width + 10}px`;
                 highlight.style.height = `${rect.height + 10}px`;
 
+                // 當有高亮時，讓 overlay 變透明
+                this.overlay.classList.add('transparent');
+
                 // 調整彈窗位置
                 this.positionPopup(step.position, rect);
             }
-        } else {
+        }
+
+        if (!targetFound) {
             highlight.style.display = 'none';
+            this.overlay.classList.remove('transparent');
+
+            // 確保彈窗在畫面中央
             this.popup.style.top = '50%';
             this.popup.style.left = '50%';
             this.popup.style.transform = 'translate(-50%, -50%)';
@@ -169,31 +187,41 @@ const Tutorial = {
     // 調整彈窗位置
     positionPopup(position, targetRect) {
         const popup = this.popup;
+        const padding = 20;
+        const margin = 10;
+
+        let top, left;
         popup.style.transform = 'none';
 
         switch (position) {
             case 'top':
-                popup.style.top = `${targetRect.top - popup.offsetHeight - 20}px`;
-                popup.style.left = `${targetRect.left + targetRect.width / 2 - popup.offsetWidth / 2}px`;
+                top = targetRect.top - popup.offsetHeight - padding;
+                left = targetRect.left + targetRect.width / 2 - popup.offsetWidth / 2;
                 break;
             case 'bottom':
-                popup.style.top = `${targetRect.bottom + 20}px`;
-                popup.style.left = `${targetRect.left + targetRect.width / 2 - popup.offsetWidth / 2}px`;
+                top = targetRect.bottom + padding;
+                left = targetRect.left + targetRect.width / 2 - popup.offsetWidth / 2;
                 break;
             case 'left':
-                popup.style.top = `${targetRect.top + targetRect.height / 2 - popup.offsetHeight / 2}px`;
-                popup.style.left = `${targetRect.left - popup.offsetWidth - 20}px`;
+                top = targetRect.top + targetRect.height / 2 - popup.offsetHeight / 2;
+                left = targetRect.left - popup.offsetWidth - padding;
                 break;
             case 'right':
-                popup.style.top = `${targetRect.top + targetRect.height / 2 - popup.offsetHeight / 2}px`;
-                popup.style.left = `${targetRect.right + 20}px`;
+                top = targetRect.top + targetRect.height / 2 - popup.offsetHeight / 2;
+                left = targetRect.right + padding;
                 break;
             case 'center':
             default:
-                popup.style.top = '50%';
-                popup.style.left = '50%';
-                popup.style.transform = 'translate(-50%, -50%)';
+                top = window.innerHeight / 2 - popup.offsetHeight / 2;
+                left = window.innerWidth / 2 - popup.offsetWidth / 2;
         }
+
+        // 邊界檢查 (Ensure it's on screen)
+        const maxX = window.innerWidth - popup.offsetWidth - margin;
+        const maxY = window.innerHeight - popup.offsetHeight - margin;
+
+        popup.style.top = `${Math.max(margin, Math.min(top, maxY))}px`;
+        popup.style.left = `${Math.max(margin, Math.min(left, maxX))}px`;
     },
 
     // 播放教學動畫
@@ -226,17 +254,31 @@ const Tutorial = {
         }
     },
 
-    // 完成教學
+    // 完成教學 (或強制跳過)
     finish() {
-        this.isActive = false;
-        localStorage.setItem('financeGame_tutorialDone', 'true');
+        try {
+            this.isActive = false;
+            localStorage.setItem('financeGame_tutorialDone', 'true');
 
-        if (this.overlay) {
-            this.overlay.remove();
-            this.overlay = null;
+            // 強制移除所有教學相關元素
+            const overlay = document.querySelector('.tutorial-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            if (this.overlay) {
+                this.overlay = null;
+            }
+
+            // 恢復頁面可能的縮放或鎖定狀態
+            document.body.style.overflow = '';
+
+            AudioManager.play('success');
+        } catch (e) {
+            console.error('Tutorial finish error:', e);
+            // 最後一線防禦：直接移除遮罩內容
+            const overlay = document.querySelector('.tutorial-overlay');
+            if (overlay) overlay.style.display = 'none';
         }
-
-        AudioManager.play('success');
     },
 
     // 重置教學

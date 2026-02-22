@@ -62,9 +62,23 @@ class Player {
         this.hasProperty = false;
         this.quizzesPassed = 0;
         this.gamesCompleted = 0;
+        this.hasEverInvested = false;
+        this.maxDebtReached = 0;    // 追蹤曾達到的最高負債
+        this.totalDebtTaken = 0;    // 追蹤曾借入的總負債金額
+        this.eventHistory = [];     // 記錄事件歷史（用於故事產生）
+        this.actionHistory = [];    // 記錄行動歷史（用於故事產生）
+        this.careerHistory = [];    // 記錄職業變化
 
-        // 角色特質（由問答決定）
-        this.traits = [];
+        // 角色特質與家庭狀態
+        this.traits = []; // 具體特質 ID 列表
+        this.familyStatus = 'single'; // single, married, parent
+        this.luxuries = []; // 已購豪華物件 ID 列表
+        this.activeIncomeHistory = [];
+        this.passiveIncomeHistory = [];
+        this.expenseHistory = [];
+
+        this.currentCareer = 'student';
+        this.currentMarketState = 'stable';
     }
 
     getTotalInvestments() {
@@ -80,10 +94,15 @@ class Player {
     }
 
     getMonthlyIncome() {
+        const careerData = GAME_DATA.careers.find(c => c.id === this.currentCareer);
+        const baseSalary = careerData ? careerData.baseSalary : 50;
+
+        // 額外加成
         const stageData = GAME_DATA.stages[this.currentStage];
-        const baseIncome = stageData ? stageData.baseIncome : this.baseIncome;
-        const wisdomBonus = Math.floor(baseIncome * (this.stats.wisdom * 0.02));
-        return baseIncome + this.incomeBonus + wisdomBonus;
+        const stageBonus = stageData ? stageData.baseIncome - 50 : 0; // 階段性環境加成
+
+        const wisdomBonus = Math.floor(baseSalary * (this.stats.wisdom * 0.02));
+        return baseSalary + stageBonus + this.incomeBonus + wisdomBonus;
     }
 
     getMonthlyExpense() {
@@ -95,14 +114,18 @@ class Player {
 
     addStat(stat, value) {
         if (this.stats.hasOwnProperty(stat)) {
-            this.stats[stat] = Math.max(0, Math.min(10, this.stats[stat] + value));
+            this.stats[stat] = Math.max(0, Math.min(20, this.stats[stat] + value));
+            if (window.UI) UI.updateGameUI(this);
         }
     }
 
     addCash(amount) {
         this.cash += amount;
         if (this.cash < 0) {
-            this.debt += Math.abs(this.cash);
+            const debtAdded = Math.abs(this.cash);
+            this.debt += debtAdded;
+            this.totalDebtTaken += debtAdded;
+            if (this.debt > this.maxDebtReached) this.maxDebtReached = this.debt;
             this.cash = 0;
         }
 
@@ -112,6 +135,8 @@ class Player {
         } else {
             this.lowCashStreak = 0;
         }
+
+        if (window.UI) UI.updateGameUI(this);
     }
 
     invest(type, amount) {
@@ -130,6 +155,7 @@ class Player {
         }
         this.investments[type] += amount;
         this.totalInvested += amount;
+        this.hasEverInvested = true; // 標記為有投資過
 
         return true;
     }
@@ -138,11 +164,21 @@ class Player {
         let totalReturn = 0;
         let hadLoss = false;
 
+        const market = GAME_DATA.market.states.find(s => s.id === this.currentMarketState);
+        let marketMultiplier = market ? market.multiplier : 1.0;
+
+        // 特質影響：遠見者/冒險者
+        let investBonus = 1.0;
+        if (this.hasTrait('visionary')) investBonus *= 1.1;
+
         for (const [type, amount] of Object.entries(this.investments)) {
             const investOption = GAME_DATA.investments.find(i => i.id === type);
             if (investOption) {
+                let currentRate = investOption.returnRate;
+                if (type === 'stock' && this.hasTrait('risk_taker')) currentRate *= 1.2;
+
                 const luckFactor = 1 + (Math.random() - 0.5) * (this.stats.luck * 0.02);
-                const returnRate = investOption.returnRate * luckFactor;
+                const returnRate = currentRate * marketMultiplier * luckFactor * investBonus;
                 const interest = amount * returnRate;
 
                 this.investments[type] += interest;
@@ -150,13 +186,20 @@ class Player {
 
                 if (interest < 0) {
                     hadLoss = true;
-                    this.investmentLoss += Math.abs(interest);
+                    // 特質影響：冒險家損失也增加
+                    const finalLoss = this.hasTrait('risk_taker') ? Math.abs(interest) * 1.2 : Math.abs(interest);
+                    this.investmentLoss += finalLoss;
                 } else {
                     if (type === 'stock') {
                         this.stockProfit += interest;
                     }
                 }
             }
+        }
+
+        // 儲蓄利率特質
+        if (this.investments['savings'] && this.hasTrait('saver')) {
+            // 已在上方迴圈處理過基礎利息，這裡可以視為額外加成或是調整 returnRate
         }
 
         if (totalReturn > 0 && !hadLoss) {
@@ -176,10 +219,31 @@ class Player {
         const expense = this.getMonthlyExpense();
         this.addCash(-expense);
 
+        // 豪華資產維護費：若現金不足，自動累積為負債
+        let maintenanceCost = 0;
+        this.luxuries.forEach(luxuryId => {
+            const lux = GAME_DATA.luxuries.find(l => l.id === luxuryId);
+            if (lux && lux.maintenance > 0) maintenanceCost += lux.maintenance;
+        });
+        if (maintenanceCost > 0) {
+            if (this.cash >= maintenanceCost) {
+                this.cash -= maintenanceCost;
+            } else {
+                const shortfall = maintenanceCost - this.cash;
+                this.cash = 0;
+                this.debt += shortfall;
+                this.totalDebtTaken += shortfall;
+                if (this.debt > this.maxDebtReached) this.maxDebtReached = this.debt;
+            }
+            if (window.UI) UI.updateGameUI(this);
+        }
+
         const interest = this.calculateCompoundInterest();
 
         if (this.debt > 0) {
-            this.debt *= 1.05;
+            const debtInterest = this.debt * 0.05;
+            this.debt += debtInterest;
+            if (this.debt > this.maxDebtReached) this.maxDebtReached = this.debt;
         }
 
         // 追蹤無行動
@@ -192,17 +256,62 @@ class Player {
         this.actionsThisRound = 0;
         this.currentRound++;
 
-        const stageData = GAME_DATA.stages[this.currentStage];
-        if (stageData) {
-            const roundsPerYear = stageData.rounds / (stageData.age[1] - stageData.age[0]);
-            this.age = stageData.age[0] + Math.floor((this.currentRound - this.getStageStartRound()) / roundsPerYear);
+        // 年齡累加：從 12 到 60，共 25 回合，每回合 +2 歲
+        this.age = Math.min(60, 12 + Math.floor((this.currentRound - 1) * 2));
 
-            if (this.currentRound > this.getStageEndRound() && this.currentStage < GAME_DATA.stages.length - 1) {
-                this.currentStage++;
+        // 人生階段更新
+        const stageThresholds = [0, 5, 10, 15, 20, 25];
+        for (let i = GAME_DATA.stages.length - 1; i >= 0; i--) {
+            if (this.currentRound > stageThresholds[i]) {
+                this.currentStage = i;
+                break;
             }
         }
 
-        return { income, expense, interest };
+        this.updateMarketState();
+        this.checkCareerPromotion();
+
+        // 記錄歷史數據（用於結算圖表）
+        this.activeIncomeHistory.push(income);
+        this.passiveIncomeHistory.push(Math.max(0, interest));
+        this.expenseHistory.push(expense);
+
+        return { income, expense, interest, market: this.currentMarketState };
+    }
+
+    hasTrait(traitId) {
+        return this.traits.includes(traitId);
+    }
+
+    updateMarketState() {
+        const rand = Math.random();
+        let cumulative = 0;
+        for (const state of GAME_DATA.market.states) {
+            cumulative += state.chance;
+            if (rand < cumulative) {
+                this.currentMarketState = state.id;
+                break;
+            }
+        }
+    }
+
+    checkCareerPromotion() {
+        // 從最高級別開始檢查，符合條件就晉升
+        const availableCareers = [...GAME_DATA.careers].reverse();
+        for (const career of availableCareers) {
+            const meetWisdom = this.stats.wisdom >= (career.minWisdom || 0);
+            const meetPerseverance = this.stats.perseverance >= (career.minPerseverance || 0);
+            const meetSocial = this.stats.social >= (career.minSocial || 0);
+            const meetLuck = this.stats.luck >= (career.minLuck || 0);
+
+            if (meetWisdom && meetPerseverance && meetSocial && meetLuck) {
+                if (this.currentCareer !== career.id) {
+                    this.currentCareer = career.id;
+                    // TODO: 觸發通知
+                }
+                break;
+            }
+        }
     }
 
     getStageStartRound() {
@@ -245,7 +354,8 @@ class Player {
         this.gamesCompleted++;
     }
 
-    save() {
+
+    save(slotId = 1) {
         const saveData = {
             name: this.name,
             stats: this.stats,
@@ -280,18 +390,38 @@ class Player {
             hasProperty: this.hasProperty,
             quizzesPassed: this.quizzesPassed,
             gamesCompleted: this.gamesCompleted,
-            traits: this.traits
+            traits: this.traits,
+            hasEverInvested: this.hasEverInvested,
+            maxDebtReached: this.maxDebtReached,
+            totalDebtTaken: this.totalDebtTaken,
+            currentCareer: this.currentCareer,
+            currentMarketState: this.currentMarketState,
+            luxuries: this.luxuries,
+            familyStatus: this.familyStatus,
+            activeIncomeHistory: this.activeIncomeHistory,
+            passiveIncomeHistory: this.passiveIncomeHistory,
+            expenseHistory: this.expenseHistory,
+            eventHistory: this.eventHistory,
+            actionHistory: this.actionHistory,
+            careerHistory: this.careerHistory,
+            savedAt: new Date().toISOString(),
+            slotLabel: `回合 ${this.currentRound - 1} / 年齡 ${this.age} 歲`
         };
+        localStorage.setItem(`financeGame_save_${slotId}`, JSON.stringify(saveData));
+
+        // 向下相容：同步到舊存檔鍵值
         localStorage.setItem('financeGame_save', JSON.stringify(saveData));
 
         // 雲端存檔
-        if (Auth && Auth.isLoggedIn()) {
+        if (typeof Auth !== 'undefined' && Auth && Auth.isLoggedIn()) {
             Auth.saveCloudData(saveData);
         }
     }
 
-    static load() {
-        const saveData = localStorage.getItem('financeGame_save');
+    static load(slotId = null) {
+        // 若指定 slot，讀該 slot；否則嘗試舊格式向下相容
+        const key = slotId ? `financeGame_save_${slotId}` : 'financeGame_save';
+        const saveData = localStorage.getItem(key);
         if (!saveData) return null;
 
         try {
@@ -304,7 +434,42 @@ class Player {
         }
     }
 
-    static clearSave() {
-        localStorage.removeItem('financeGame_save');
+    // 取得三個存檔槽的摘要資訊
+    static getSaveSlots() {
+        const slots = [];
+        for (let i = 1; i <= 3; i++) {
+            const raw = localStorage.getItem(`financeGame_save_${i}`);
+            if (raw) {
+                try {
+                    const d = JSON.parse(raw);
+                    slots.push({
+                        slotId: i,
+                        isEmpty: false,
+                        label: d.slotLabel || `回合 ${d.currentRound - 1}`,
+                        name: d.name || '玩家',
+                        netWorth: (d.cash || 0) + Object.values(d.investments || {}).reduce((s, v) => s + v, 0) - (d.debt || 0),
+                        savedAt: d.savedAt
+                    });
+                } catch (e) {
+                    slots.push({ slotId: i, isEmpty: true });
+                }
+            } else {
+                slots.push({ slotId: i, isEmpty: true });
+            }
+        }
+        return slots;
+    }
+
+    static clearSave(slotId = null) {
+        if (slotId) {
+            localStorage.removeItem(`financeGame_save_${slotId}`);
+        } else {
+            // 清除所有槽位
+            for (let i = 1; i <= 3; i++) {
+                localStorage.removeItem(`financeGame_save_${i}`);
+            }
+            localStorage.removeItem('financeGame_save');
+        }
     }
 }
+

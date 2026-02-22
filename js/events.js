@@ -115,12 +115,80 @@ const Events = {
             result.hasInsurance = effect.hasInsurance;
         }
 
+        // 處理家庭狀態
+        if (effect.familyStatus) {
+            player.familyStatus = effect.familyStatus;
+            result.familyStatus = effect.familyStatus;
+        }
+
+        // 處理資產
+        if (effect.hasProperty) {
+            player.hasProperty = true;
+            result.hasProperty = true;
+        }
+
+        // 處理豪華資產收購
+        if (effect.buyLuxury) {
+            const luxury = GAME_DATA.luxuries.find(l => l.id === effect.buyLuxury);
+            if (luxury && !player.luxuries.includes(luxury.id)) {
+                player.luxuries.push(luxury.id);
+                // 立即套用一次性效果（如果有）
+                if (luxury.effect) {
+                    for (const [stat, val] of Object.entries(luxury.effect)) {
+                        player.addStat(stat, val);
+                    }
+                }
+                result.buyLuxury = luxury.name;
+            }
+        }
+
         // 處理屬性變動
         for (const stat of ['wisdom', 'perseverance', 'social', 'luck']) {
             if (effect[stat]) {
                 player.addStat(stat, effect[stat]);
                 result[stat] = effect[stat];
             }
+        }
+
+        // 處理直接負債增加
+        if (effect.debt) {
+            player.debt += effect.debt;
+            player.totalDebtTaken += effect.debt;
+            if (player.debt > player.maxDebtReached) player.maxDebtReached = player.debt;
+            result.debt = effect.debt;
+        }
+
+        // 處理提前還款（比例）
+        if (effect.repayDebtPercent && player.debt > 0) {
+            const repaid = Math.min(player.cash, Math.floor(player.debt * effect.repayDebtPercent));
+            if (repaid > 0) {
+                player.cash -= repaid;
+                player.debt -= repaid;
+                result.repaid = repaid;
+            }
+        }
+
+        // 處理好友借款（50% 機率追不回）
+        if (event.friendLoan) {
+            if (Math.random() < 0.5) {
+                result.friendLoanLost = true;
+                result.friendLoanMessage = '💔 好友音訊全無，200 金幣追不回了！';
+            } else {
+                player.addCash(200);
+                result.friendLoanMessage = '😊 好友如期還款，還多給了 10% 利息！';
+                player.addCash(20);
+            }
+        }
+
+        // 記錄事件到歷史（用於人生故事生成）
+        if (event && event.id) {
+            player.eventHistory = player.eventHistory || [];
+            player.eventHistory.push({
+                round: player.currentRound,
+                eventId: event.id,
+                title: event.title,
+                type: event.type
+            });
         }
 
         return result;
@@ -155,6 +223,19 @@ const Events = {
 
         if (result.hasInsurance) {
             parts.push('獲得保險保障 🛡️');
+        }
+
+        if (result.familyStatus) {
+            const familyName = { married: '邁入婚姻 💍', parent: '喜迎麟兒 🍼' };
+            parts.push(familyName[result.familyStatus] || '家庭狀態變更');
+        }
+
+        if (result.buyLuxury) {
+            parts.push(`獲得 ${result.buyLuxury} 💎`);
+        }
+
+        if (result.hasProperty) {
+            parts.push('成功置產 🏠');
         }
 
         const statNames = { wisdom: '智慧', perseverance: '毅力', social: '社交', luck: '運氣' };

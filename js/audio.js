@@ -6,6 +6,7 @@ const AudioManager = {
     bgm: null,
     sounds: {},
     isMuted: false,
+    isPlayingBGM: false,
     bgmVolume: 0.3,
     sfxVolume: 0.5,
 
@@ -77,8 +78,9 @@ const AudioManager = {
 
     // 播放背景音樂
     playBGM() {
-        if (this.isMuted || this.bgm) return;
+        if (this.isMuted || this.isPlayingBGM) return;
 
+        this.isPlayingBGM = true;
         // 使用簡單的音樂生成
         this.startAmbientMusic();
     },
@@ -138,6 +140,7 @@ const AudioManager = {
             clearTimeout(this.bgmTimeout);
             this.bgmTimeout = null;
         }
+        this.isPlayingBGM = false;
     },
 
     // 切換靜音
@@ -147,6 +150,8 @@ const AudioManager = {
 
         if (this.isMuted) {
             this.stopBGM();
+        } else {
+            this.playBGM();
         }
 
         return this.isMuted;
@@ -164,7 +169,11 @@ const AudioManager = {
     // 恢復音訊上下文（某些瀏覽器需要用戶互動後才能播放音訊）
     resume() {
         if (this.audioContext && this.audioContext.state === 'suspended') {
-            this.audioContext.resume();
+            this.audioContext.resume().then(() => {
+                if (this.isPlayingBGM && !this.isMuted) {
+                    this.playBGM();
+                }
+            });
         }
     }
 };
