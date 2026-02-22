@@ -9,16 +9,72 @@ const Events = {
      * @returns {Object|null} 事件物件或 null
      */
     triggerRandomEvent(player) {
-        // 40% 機率觸發事件
-        if (Math.random() > 0.4) return null;
+        // 60% 機率觸發事件（提高觸發率）
+        if (Math.random() > 0.6) return null;
+
+        // 特定人生里程碑強制觸發（確保玩家體驗到重要事件）
+        const forced = this.tryForcedLifeEvent(player);
+        if (forced) return forced;
 
         const eventType = this.getEventType(player);
         const events = GAME_DATA.events[eventType];
 
         if (!events || events.length === 0) return null;
 
+        if (eventType === 'decision') {
+            // 過濾有 condition 的事件，只選符合條件的
+            const eligible = events.filter(e => {
+                if (typeof e.condition === 'function') {
+                    try { return e.condition(player); } catch { return false; }
+                }
+                return true;
+            });
+            if (eligible.length === 0) return null;
+            const event = eligible[Math.floor(Math.random() * eligible.length)];
+            return { ...event, type: eventType };
+        }
+
         const event = events[Math.floor(Math.random() * events.length)];
         return { ...event, type: eventType };
+    },
+
+    /**
+     * 根據回合/階段強制觸發重要人生事件
+     * @param {Player} player
+     * @returns {Object|null}
+     */
+    tryForcedLifeEvent(player) {
+        const round = player.currentRound;
+        const stage = player.currentStage;
+
+        // 回合10~14：若還未結婚，40%機率觸發求婚事件
+        if (round >= 10 && round <= 14 && player.familyStatus === 'single') {
+            if (Math.random() < 0.4) {
+                const ev = GAME_DATA.events.decision.find(e => e.id === 'marriage_proposal');
+                if (ev) return { ...ev, type: 'decision' };
+            }
+        }
+
+        // 回合15~19：若已婚且無小孩，40%機率觸發育兒事件
+        if (round >= 15 && round <= 19 && player.familyStatus === 'married') {
+            if (Math.random() < 0.4) {
+                const ev = GAME_DATA.events.decision.find(e => e.id === 'baby_plan');
+                if (ev) return { ...ev, type: 'decision' };
+            }
+        }
+
+        // 每5回合有30%機率觸發健康相關事件（生病/住院）
+        if (round % 5 === 0) {
+            if (Math.random() < 0.3) {
+                const healthEvents = GAME_DATA.events.negative.filter(e => e.category === 'health');
+                if (healthEvents.length > 0) {
+                    const ev = healthEvents[Math.floor(Math.random() * healthEvents.length)];
+                    return { ...ev, type: 'negative' };
+                }
+            }
+        }
+
+        return null;
     },
 
     /**

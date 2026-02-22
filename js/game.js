@@ -14,6 +14,8 @@ class Game {
         this.growthChart = null;
         this.growthHistory = [];
         this.tutorialShown = false;
+        this.previousScreen = 'start'; // 記住從哪裡進入成就畫面
+        this.quizStarted = false;      // 是否已開始問答
     }
 
     init() {
@@ -71,12 +73,12 @@ class Game {
             });
         }
 
-        // 從成就返回
+        // 從成就返回（記住來源畫面）
         const backBtn = document.getElementById('back-from-achievements');
         if (backBtn) {
             backBtn.addEventListener('click', () => {
                 AudioManager.play('click');
-                UI.showScreen('start');
+                UI.showScreen(this.previousScreen);
             });
         }
 
@@ -199,20 +201,54 @@ class Game {
 
     startNewGame() {
         Player.clearSave();
-        // 重置教學標記，讓新玩家能看到教學
         localStorage.removeItem('financeGame_tutorialDone');
         this.tutorialShown = false;
+        this.quizStarted = false;
 
         this.player = new Player('小明');
         this.currentQuestionIndex = 0;
         this.growthHistory = [this.player.getNetWorth()];
-
-        // 隨機選擇5個問題
         this.selectedQuestions = this.shuffleArray([...GAME_DATA.questions]).slice(0, 5);
 
         UI.showScreen('character');
-        UI.showQuestion(this.selectedQuestions[0], 0, this.selectedQuestions.length);
+
+        // 顯示名字輸入區，隱藏問答區
+        const nameArea = document.getElementById('name-input-area');
+        const quizArea = document.getElementById('quiz-area');
+        if (nameArea) nameArea.style.display = 'block';
+        if (quizArea) quizArea.style.display = 'none';
+
+        const nameInput = document.getElementById('player-name-input');
+        if (nameInput) { nameInput.value = ''; setTimeout(() => nameInput.focus(), 300); }
+
         UI.updateStatsPreview(this.player.stats);
+
+        // 確認名字後進入問答
+        const confirmBtn = document.getElementById('confirm-name-btn');
+        if (confirmBtn) {
+            // 移除舊的事件（避免重複綁定）
+            const newBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+            const startQuiz = () => {
+                if (this.quizStarted) return;
+                const val = (document.getElementById('player-name-input')?.value || '').trim();
+                this.player.name = val || '小明';
+                this.quizStarted = true;
+                if (nameArea) nameArea.style.display = 'none';
+                if (quizArea) quizArea.style.display = 'block';
+                UI.showQuestion(this.selectedQuestions[0], 0, this.selectedQuestions.length);
+            };
+
+            newBtn.addEventListener('click', startQuiz);
+
+            const inp = document.getElementById('player-name-input');
+            if (inp) {
+                const keyHandler = (e) => { if (e.key === 'Enter') startQuiz(); };
+                inp.removeEventListener('keydown', keyHandler);
+                inp.addEventListener('keydown', keyHandler);
+            }
+        }
     }
 
     continueGame() {
@@ -229,7 +265,13 @@ class Game {
         Player.clearSave();
         localStorage.removeItem('financeGame_tutorialDone');
         this.tutorialShown = false;
+        this.quizStarted = false;
         achievementSystem.reset();
+
+        // 強制隱藏人生故事畫面（避免再玩一次後重疊）
+        const storyScreen = document.getElementById('story-screen');
+        if (storyScreen) storyScreen.classList.remove('active');
+
         this.startNewGame();
     }
 
@@ -281,6 +323,7 @@ class Game {
     startGameplay() {
         UI.showScreen('game');
         UI.updateGameUI(this.player);
+        this.updateActionButtons(); // 確保行動次數初始顯示正確(=2)
         this.showWelcomeEvent();
         this.updateGrowthChart();
 
@@ -372,18 +415,58 @@ class Game {
         if (p.debt <= 0) {
             this.showMessage('✅ 無負債', '你目前沒有任何負債，繼續保持良好財務狀態！');
             p.actionsThisRound--;
+            UI.updateActionsRemaining(p);
             return;
         }
-        const repay = Math.min(p.cash, Math.floor(p.debt * 0.3));
-        if (repay <= 0) {
+        if (p.cash <= 0) {
             this.showMessage('💸 現金不足', '現金不足以還款，先儲蓄更多再還。');
             p.actionsThisRound--;
+            UI.updateActionsRemaining(p);
             return;
         }
-        p.cash -= repay;
-        p.debt -= repay;
-        this.showMessage('💸 還款成功', `還清 ${repay} 金幣負債，剩餘負債：${Math.round(p.debt)} 金幣`);
-        UI.updateGameUI(p);
+
+        const maxRepay = Math.min(p.cash, p.debt);
+        // 彈出還款 Modal，讓玩家自訂金額
+        UI.showModal(`
+            <div class="modal-header">
+                <div class="modal-icon">💳</div>
+                <h3 class="modal-title">還款視窗</h3>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:8px;">目前負債：<strong style="color:var(--accent-red)">${Finance.formatMoney(Math.round(p.debt))} 金幣</strong></p>
+                <p style="margin-bottom:16px;">可用現金：<strong style="color:var(--accent-green)">${Finance.formatMoney(Math.round(p.cash))} 金幣</strong></p>
+                <label style="display:block;margin-bottom:8px;color:var(--accent-gold);">輸入還款金額：</label>
+                <input id="repay-amount-input" type="number" min="1" max="${Math.floor(maxRepay)}" value="${Math.floor(maxRepay)}"
+                    style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--primary-color);background:rgba(255,255,255,0.08);color:var(--text-primary);font-size:1rem;text-align:center;margin-bottom:12px;">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button id="repay-all-btn" class="btn btn-primary" style="flex:1;">💸 全部還清 (${Finance.formatMoney(Math.floor(maxRepay))})</button>
+                    <button id="repay-confirm-btn" class="btn btn-secondary" style="flex:1;">✅ 確認還款</button>
+                </div>
+            </div>
+        `);
+
+        // 全部還清
+        setTimeout(() => {
+            const allBtn = document.getElementById('repay-all-btn');
+            const confirmBtn = document.getElementById('repay-confirm-btn');
+            if (allBtn) allBtn.addEventListener('click', () => {
+                const amount = Math.min(Math.floor(p.cash), Math.ceil(p.debt));
+                if (amount > 0) { p.cash -= amount; p.debt = Math.max(0, p.debt - amount); }
+                UI.hideModal();
+                this.showMessage('💸 全額還款', `還清 ${Finance.formatMoney(amount)} 金幣，剩餘負債：${Finance.formatMoney(Math.round(p.debt))} 金幣`);
+                UI.updateGameUI(p);
+            });
+            if (confirmBtn) confirmBtn.addEventListener('click', () => {
+                const input = document.getElementById('repay-amount-input');
+                let amount = parseInt(input?.value) || 0;
+                amount = Math.min(amount, Math.floor(p.cash), Math.ceil(p.debt));
+                if (amount <= 0) { alert('請輸入有效金額！'); return; }
+                p.cash -= amount; p.debt = Math.max(0, p.debt - amount);
+                UI.hideModal();
+                this.showMessage('💸 還款成功', `還清 ${Finance.formatMoney(amount)} 金幣，剩餘負債：${Finance.formatMoney(Math.round(p.debt))} 金幣`);
+                UI.updateGameUI(p);
+            });
+        }, 100);
     }
 
     handleLecture() {
@@ -708,6 +791,13 @@ class Game {
     }
 
     showAchievementsScreen() {
+        // 記住目前畫面，供返回按鈕使用
+        const activeScreens = Object.entries(UI.elements.screens)
+            .filter(([, el]) => el && el.classList.contains('active'));
+        if (activeScreens.length > 0) {
+            this.previousScreen = activeScreens[0][0];
+        }
+
         UI.showScreen('achievements');
 
         const progress = achievementSystem.getPositiveProgress();

@@ -296,9 +296,24 @@ class Player {
     }
 
     checkCareerPromotion() {
-        // 從最高級別開始檢查，符合條件就晉升
+        // 依人生階段決定可晉升的最高職業層級
+        // stage 0: 學生 → 最高 employee
+        // stage 1: 大學/剛出社會 → 最高 senior
+        // stage 2: 職場發展期 → 最高 entrepreneur
+        // stage 3+: 事業黃金/退休期 → 可晉升 cfo/angel_investor/tycoon
+        const stageMaxCareer = {
+            0: ['employee'],
+            1: ['employee', 'senior'],
+            2: ['employee', 'senior', 'manager', 'entrepreneur'],
+            3: ['employee', 'senior', 'manager', 'entrepreneur', 'cfo', 'angel_investor', 'tycoon'],
+            4: ['employee', 'senior', 'manager', 'entrepreneur', 'cfo', 'angel_investor', 'tycoon'],
+        };
+        const allowedCareers = stageMaxCareer[Math.min(4, this.currentStage)] || stageMaxCareer[0];
+
+        // 從最高級別開始檢查，符合條件且在允許範圍內就晉升
         const availableCareers = [...GAME_DATA.careers].reverse();
         for (const career of availableCareers) {
+            if (!allowedCareers.includes(career.id)) continue;
             const meetWisdom = this.stats.wisdom >= (career.minWisdom || 0);
             const meetPerseverance = this.stats.perseverance >= (career.minPerseverance || 0);
             const meetSocial = this.stats.social >= (career.minSocial || 0);
@@ -307,7 +322,6 @@ class Player {
             if (meetWisdom && meetPerseverance && meetSocial && meetLuck) {
                 if (this.currentCareer !== career.id) {
                     this.currentCareer = career.id;
-                    // TODO: 觸發通知
                 }
                 break;
             }

@@ -145,15 +145,15 @@ const UI = {
         g.playerName.textContent = player.name;
         g.playerAge.textContent = `${player.age} 歲`;
 
-        // 更新屬性條
-        const maxStat = 10;
-        g.statWisdom.style.width = `${(player.stats.wisdom / maxStat) * 100}%`;
+        // 更新屬性條（上限 20）
+        const maxStat = 20;
+        g.statWisdom.style.width = `${Math.min(100, (player.stats.wisdom / maxStat) * 100)}%`;
         g.statWisdomNum.textContent = player.stats.wisdom;
-        g.statPerseverance.style.width = `${(player.stats.perseverance / maxStat) * 100}%`;
+        g.statPerseverance.style.width = `${Math.min(100, (player.stats.perseverance / maxStat) * 100)}%`;
         g.statPerseveranceNum.textContent = player.stats.perseverance;
-        g.statSocial.style.width = `${(player.stats.social / maxStat) * 100}%`;
+        g.statSocial.style.width = `${Math.min(100, (player.stats.social / maxStat) * 100)}%`;
         g.statSocialNum.textContent = player.stats.social;
-        g.statLuck.style.width = `${(player.stats.luck / maxStat) * 100}%`;
+        g.statLuck.style.width = `${Math.min(100, (player.stats.luck / maxStat) * 100)}%`;
         g.statLuckNum.textContent = player.stats.luck;
 
         // 更新財務
@@ -272,6 +272,15 @@ const UI = {
     // 隱藏彈窗
     hideModal() {
         this.elements.modal.classList.remove('active');
+    },
+
+    // 即時更新行動次數顯示
+    updateActionsRemaining(player) {
+        const max = player.maxActionsPerRound || 2;
+        const used = player.actionsThisRound || 0;
+        const remaining = Math.max(0, max - used);
+        const el = document.getElementById('actions-remaining');
+        if (el) el.textContent = remaining;
     },
 
     showInvestModal(player) {

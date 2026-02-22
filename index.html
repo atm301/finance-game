@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/animations.css">
 
-    <!-- Firebase SDK (選用) -->
+    <!-- Firebase SDKs (compat v9) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -87,39 +87,55 @@
         <div id="character-screen" class="screen">
             <div class="character-container">
                 <div class="screen-header">
-                    <h2 data-i18n="character.title">🌟 角色創建</h2>
-                    <p data-i18n="character.subtitle">回答以下問題，決定你的起始能力！</p>
+                    <h2>🌟 角色創建</h2>
+                    <p>回答以下問題，決定你的起始能力！</p>
                 </div>
-                <div class="question-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="question-progress"></div>
+
+                <!-- 名字輸入區 -->
+                <div id="name-input-area" style="text-align:center; margin-bottom:20px;">
+                    <label style="display:block; margin-bottom:8px; color:var(--accent-gold); font-weight:600;">📝
+                        主角名稱</label>
+                    <input id="player-name-input" type="text" maxlength="10" placeholder="小明"
+                        style="padding:10px 16px; border-radius:12px; border:2px solid var(--primary-color); background:rgba(255,255,255,0.08); color:var(--text-primary); font-size:1rem; text-align:center; width:200px; outline:none;">
+                    <p style="font-size:0.78rem; color:var(--text-muted); margin-top:6px;">最多 10 字元，空白則使用「小明」</p>
+                    <button id="confirm-name-btn" class="btn btn-primary"
+                        style="margin-top:10px; padding:8px 24px;">確認名稱，開始問答 →</button>
+                </div>
+
+                <!-- 問答區域（輸入名稱後顯示） -->
+                <div id="quiz-area" style="display:none;">
+                    <div class="question-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="question-progress"></div>
+                        </div>
+                        <span id="question-counter">問題 1/5</span>
                     </div>
-                    <span id="question-counter">問題 1/5</span>
+                    <div id="question-container" class="question-box">
+                        <!-- 問題會動態載入 -->
+                    </div>
                 </div>
-                <div id="question-container" class="question-box">
-                    <!-- 問題會動態載入 -->
-                </div>
+
                 <div id="stats-preview" class="stats-preview">
-                    <h3 data-i18n="character.stats">目前屬性</h3>
+                    <h3>目前屬性</h3>
                     <div class="stats-grid">
                         <div class="stat-item">
                             <span class="stat-icon">🧠</span>
-                            <span class="stat-name" data-i18n="stat.wisdom">智慧</span>
+                            <span class="stat-name">智慧</span>
                             <span class="stat-value" id="preview-wisdom">0</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-icon">💪</span>
-                            <span class="stat-name" data-i18n="stat.perseverance">毅力</span>
+                            <span class="stat-name">毅力</span>
                             <span class="stat-value" id="preview-perseverance">0</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-icon">🤝</span>
-                            <span class="stat-name" data-i18n="stat.social">社交</span>
+                            <span class="stat-name">社交</span>
                             <span class="stat-value" id="preview-social">0</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-icon">🍀</span>
-                            <span class="stat-name" data-i18n="stat.luck">運氣</span>
+                            <span class="stat-name">運氣</span>
                             <span class="stat-value" id="preview-luck">0</span>
                         </div>
                     </div>
@@ -416,8 +432,8 @@
     <div id="achievement-notifications"></div>
 
     <!-- 人生故事畫面 -->
-    <div id="story-screen" class="screen">
-        <div class="result-container" style="max-width:860px; padding-bottom:40px;">
+    <div id="story-screen" class="screen" style="overflow-y:auto;">
+        <div class="result-container" style="max-width:860px; padding-bottom:40px; margin:0 auto; position:relative;">
             <button class="btn btn-icon" id="back-from-story"
                 style="position:absolute; top:20px; left:20px;">⬅️</button>
             <h2 style="text-align:center; margin-bottom:8px;">📖 我的人生故事</h2>

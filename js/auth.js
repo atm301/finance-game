@@ -1,40 +1,67 @@
 /**
- * 財商小達人 - Firebase 認證系統
- * 
- * 注意：需要先在 Firebase Console 建立專案並啟用 Google 登入
- * 然後替換下方的 firebaseConfig
+ * 財商小達人 - Firebase 認證 & 雲端成就儲存系統
+ *
+ * ══════════════════════════════════════════════
+ *  如何啟用 Google 登入 + 雲端儲存：
+ *  1. 前往 https://console.firebase.google.com/
+ *  2. 新建專案（例：finance-game）
+ *  3. 啟用 Authentication → Google 登入方式
+ *  4. 啟用 Firestore Database（測試模式即可）
+ *  5. 在專案設定 → 應用程式，複製 firebaseConfig
+ *  6. 貼入下方 firebaseConfig（覆蓋 YOUR_... 部分）
+ *  7. Firestore 安全規則：
+ *     rules_version = '2';
+ *     service cloud.firestore {
+ *       match /databases/{database}/documents {
+ *         match /players/{uid} {
+ *           allow read, write: if request.auth != null && request.auth.uid == uid;
+ *         }
+ *       }
+ *     }
+ * ══════════════════════════════════════════════
  */
 
 const Auth = {
     currentUser: null,
     isInitialized: false,
+    db: null,
 
-    // Firebase 設定（需要替換為實際的專案設定）
+    // ★ 在此貼入您的 Firebase 設定
     firebaseConfig: {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyCFXwVaOTMgZPpeWgG3DliJOd6-Wa_0vBY",
+        authDomain: "finance-game-c0f8d.firebaseapp.com",
+        projectId: "finance-game-c0f8d",
+        storageBucket: "finance-game-c0f8d.firebasestorage.app",
+        messagingSenderId: "785765385470",
+        appId: "1:785765385470:web:91bbaec6df5a66692051af",
+        measurementId: "G-4Y32FM1331"
+    },
+
+    // 判斷是否已完整設定 Firebase
+    isConfigured() {
+        return !this.firebaseConfig.apiKey.includes('YOUR_');
     },
 
     // 初始化
     async init() {
-        // 檢查是否有 Firebase SDK
         if (typeof firebase === 'undefined') {
-            console.log('Firebase SDK 未載入，使用本地存檔模式');
+            console.warn('Firebase SDK 未載入，使用本地存檔模式');
+            this.useFallbackMode();
+            return;
+        }
+
+        if (!this.isConfigured()) {
+            console.warn('Firebase 尚未設定，使用本地存檔模式（見 js/auth.js 說明）');
             this.useFallbackMode();
             return;
         }
 
         try {
-            // 初始化 Firebase
             if (!firebase.apps.length) {
                 firebase.initializeApp(this.firebaseConfig);
             }
+            this.db = firebase.firestore();
 
-            // 監聽認證狀態
             firebase.auth().onAuthStateChanged((user) => {
                 this.currentUser = user;
                 this.onAuthStateChanged(user);
@@ -47,14 +74,13 @@ const Auth = {
         }
     },
 
-    // 使用本地模式（無 Firebase）
+    // 本地模式（無 Firebase 或未設定時）
     useFallbackMode() {
         this.isInitialized = true;
         this.currentUser = this.getLocalUser();
         this.onAuthStateChanged(this.currentUser);
     },
 
-    // 取得本地使用者
     getLocalUser() {
         const saved = localStorage.getItem('financeGame_localUser');
         return saved ? JSON.parse(saved) : null;
@@ -70,7 +96,8 @@ const Auth = {
                 loginBtn.style.display = 'none';
                 userInfo.style.display = 'flex';
                 userInfo.innerHTML = `
-                    <img src="${user.photoURL || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%220.9em%22 font-size=%2280%22>👤</text></svg>'}" alt="avatar" class="user-avatar">
+                    <img src="${user.photoURL || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%220.9em%22 font-size=%2280%22>👤</text></svg>'}"
+                         alt="avatar" class="user-avatar">
                     <span class="user-name">${user.displayName || user.email || '玩家'}</span>
                     <button class="btn btn-secondary btn-sm" onclick="Auth.logout()">登出</button>
                 `;
@@ -80,16 +107,16 @@ const Auth = {
             }
         }
 
-        // 載入雲端資料
+        // 已登入：同步雲端資料
         if (user) {
-            this.loadCloudData(user.uid);
+            this.syncFromCloud(user.uid);
         }
     },
 
     // Google 登入
     async loginWithGoogle() {
-        if (typeof firebase === 'undefined') {
-            // 模擬登入（本地模式）
+        // 若未設定 Firebase，使用本地模擬登入
+        if (!this.isConfigured() || typeof firebase === 'undefined') {
             const localUser = {
                 uid: 'local_' + Date.now(),
                 displayName: '本地玩家',
@@ -99,31 +126,45 @@ const Auth = {
             localStorage.setItem('financeGame_localUser', JSON.stringify(localUser));
             this.currentUser = localUser;
             this.onAuthStateChanged(localUser);
-            AudioManager.play('success');
+            if (typeof AudioManager !== 'undefined') AudioManager.play('success');
             return localUser;
         }
 
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
             const result = await firebase.auth().signInWithPopup(provider);
-            AudioManager.play('success');
+            if (typeof AudioManager !== 'undefined') AudioManager.play('success');
             return result.user;
         } catch (error) {
-            console.error('登入失敗:', error);
-            AudioManager.play('fail');
-            throw error;
+            console.error('Google 登入失敗:', error);
+            if (typeof AudioManager !== 'undefined') AudioManager.play('fail');
+            // fallback 本地登入
+            return this.loginAsLocal();
         }
+    },
+
+    // 本地臨時登入（無 Firebase 時使用）
+    loginAsLocal() {
+        const localUser = {
+            uid: 'local_' + Date.now(),
+            displayName: '本地玩家',
+            email: null,
+            photoURL: null
+        };
+        localStorage.setItem('financeGame_localUser', JSON.stringify(localUser));
+        this.currentUser = localUser;
+        this.onAuthStateChanged(localUser);
+        return localUser;
     },
 
     // 登出
     async logout() {
-        if (typeof firebase === 'undefined') {
+        if (!this.isConfigured() || typeof firebase === 'undefined') {
             localStorage.removeItem('financeGame_localUser');
             this.currentUser = null;
             this.onAuthStateChanged(null);
             return;
         }
-
         try {
             await firebase.auth().signOut();
         } catch (error) {
@@ -131,104 +172,166 @@ const Auth = {
         }
     },
 
-    // 儲存資料到雲端
+    // ─── 成就存儲（本地 + 雲端雙重備份）───────────────────
+
+    /** 儲存成就到本地 + 雲端 */
+    async saveAchievements(achievementData) {
+        // 1. 永遠存本地
+        const key = this.currentUser
+            ? `financeGame_achievements_${this.currentUser.uid}`
+            : 'financeGame_achievements_guest';
+        localStorage.setItem(key, JSON.stringify({
+            ...achievementData,
+            savedAt: new Date().toISOString()
+        }));
+
+        // 2. 登入且有 Firebase 則同步雲端
+        if (this.currentUser && this.db && this.isConfigured()) {
+            try {
+                await this.db.collection('players').doc(this.currentUser.uid).set({
+                    achievements: achievementData,
+                    lastSaved: firebase.firestore.FieldValue.serverTimestamp(),
+                    playerName: this.currentUser.displayName || '玩家'
+                }, { merge: true });
+            } catch (err) {
+                console.warn('雲端儲存成就失敗（使用本地備份）:', err.message);
+            }
+        }
+    },
+
+    /** 從本地 / 雲端讀取成就 */
+    async loadAchievements() {
+        const uid = this.currentUser?.uid;
+
+        // 優先嘗試雲端
+        if (uid && this.db && this.isConfigured()) {
+            try {
+                const doc = await this.db.collection('players').doc(uid).get();
+                if (doc.exists && doc.data().achievements) {
+                    const data = doc.data().achievements;
+                    // 合併到本地
+                    localStorage.setItem(`financeGame_achievements_${uid}`, JSON.stringify(data));
+                    return data;
+                }
+            } catch (err) {
+                console.warn('雲端讀取失敗，使用本地:', err.message);
+            }
+        }
+
+        // 本地備份
+        const localKey = uid
+            ? `financeGame_achievements_${uid}`
+            : 'financeGame_achievements_guest';
+        const local = localStorage.getItem(localKey);
+        return local ? JSON.parse(local) : null;
+    },
+
+    /** 登入後自動同步雲端成就到本地 */
+    async syncFromCloud(uid) {
+        if (!this.db || !this.isConfigured()) return;
+        try {
+            const doc = await this.db.collection('players').doc(uid).get();
+            if (doc.exists && doc.data().achievements) {
+                if (typeof achievementSystem !== 'undefined') {
+                    achievementSystem.loadFromSave(doc.data().achievements);
+                }
+            }
+        } catch (err) {
+            console.warn('雲端同步失敗:', err.message);
+        }
+    },
+
+    // ─── 存檔 ─────────────────────────────────────────────
+
     async saveCloudData(data) {
         if (!this.currentUser) return false;
 
         const saveData = {
             ...data,
-            achievements: achievementSystem.getSaveData(),
-            lastSaved: new Date().toISOString(),
-            gamesCompleted: data.gamesCompleted || 0
+            achievements: typeof achievementSystem !== 'undefined'
+                ? achievementSystem.getSaveData() : {},
+            lastSaved: new Date().toISOString()
         };
 
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
+        // 本地備份
+        localStorage.setItem(
+            `financeGame_cloud_${this.currentUser.uid}`,
+            JSON.stringify(saveData)
+        );
+
+        // 雲端同步
+        if (this.db && this.isConfigured()) {
             try {
-                await firebase.firestore()
-                    .collection('players')
-                    .doc(this.currentUser.uid)
+                await this.db.collection('players').doc(this.currentUser.uid)
                     .set(saveData, { merge: true });
-                return true;
-            } catch (error) {
-                console.error('雲端儲存失敗:', error);
+            } catch (err) {
+                console.warn('雲端存檔失敗:', err.message);
+            }
+        }
+
+        return true;
+    },
+
+    async loadCloudData(uid) {
+        // 嘗試雲端
+        if (this.db && this.isConfigured()) {
+            try {
+                const doc = await this.db.collection('players').doc(uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (typeof achievementSystem !== 'undefined') {
+                        achievementSystem.loadFromSave(data);
+                    }
+                    return data;
+                }
+            } catch (err) {
+                console.warn('雲端讀取失敗:', err.message);
             }
         }
 
         // 本地備份
-        localStorage.setItem(`financeGame_cloud_${this.currentUser.uid}`, JSON.stringify(saveData));
-        return true;
-    },
-
-    // 從雲端載入資料
-    async loadCloudData(uid) {
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-            try {
-                const doc = await firebase.firestore()
-                    .collection('players')
-                    .doc(uid)
-                    .get();
-
-                if (doc.exists) {
-                    const data = doc.data();
-                    achievementSystem.loadFromSave(data);
-                    return data;
-                }
-            } catch (error) {
-                console.error('雲端載入失敗:', error);
-            }
-        }
-
-        // 嘗試本地備份
         const local = localStorage.getItem(`financeGame_cloud_${uid}`);
         if (local) {
             const data = JSON.parse(local);
-            achievementSystem.loadFromSave(data);
+            if (typeof achievementSystem !== 'undefined') {
+                achievementSystem.loadFromSave(data);
+            }
             return data;
         }
-
         return null;
     },
 
-    // 檢查並發送獎勵 Email
-    async checkAndSendRewardEmail() {
-        if (!this.currentUser || !achievementSystem.hasAllPositive()) {
-            return false;
-        }
+    // ─── 獎勵 Email ───────────────────────────────────────
 
-        // 檢查是否已發送過
-        const rewardSent = localStorage.getItem(`financeGame_rewardSent_${this.currentUser.uid}`);
-        if (rewardSent) return false;
+    async checkAndSendRewardEmail() {
+        if (!this.currentUser || typeof achievementSystem === 'undefined') return false;
+        if (!achievementSystem.hasAllPositive()) return false;
+
+        const rewardKey = `financeGame_rewardSent_${this.currentUser.uid}`;
+        if (localStorage.getItem(rewardKey)) return false;
 
         try {
-            if (typeof firebase !== 'undefined' && firebase.functions) {
-                const sendRewardEmail = firebase.functions().httpsCallable('sendRewardEmail');
-                await sendRewardEmail({
+            if (this.db && this.isConfigured() && typeof firebase !== 'undefined' && firebase.functions) {
+                const sendReward = firebase.functions().httpsCallable('sendRewardEmail');
+                await sendReward({
                     email: this.currentUser.email,
                     displayName: this.currentUser.displayName,
                     achievements: achievementSystem.getUnlockedAchievements()
                 });
             }
-
-            localStorage.setItem(`financeGame_rewardSent_${this.currentUser.uid}`, 'true');
+            localStorage.setItem(rewardKey, 'true');
             return true;
-        } catch (error) {
-            console.error('發送獎勵 Email 失敗:', error);
+        } catch (err) {
+            console.warn('獎勵 Email 發送失敗:', err.message);
             return false;
         }
     },
 
-    // 取得使用者資訊
-    getUser() {
-        return this.currentUser;
-    },
-
-    // 是否已登入
-    isLoggedIn() {
-        return !!this.currentUser;
-    }
+    getUser() { return this.currentUser; },
+    isLoggedIn() { return !!this.currentUser; }
 };
 
-// 初始化認證系統
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
     Auth.init();
 });
