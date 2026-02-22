@@ -393,7 +393,219 @@ const GAME_DATA = {
                     { text: '還清 30% 負債', effect: { repayDebtPercent: 0.3 } },
                     { text: '繼續繳最低還款額', effect: {} }
                 ],
-                condition: (player) => player.debt > 0
+                condition: (player) => player.debt > 0,
+                knowledgeTip: '提前還清負債可節省未來的利息支出。但若利率低於投資報酬率，有時保留負債反而更有利。'
+            },
+
+            // ═══ 新增深度財商情境事件 ═══
+
+            {
+                id: 'stock_crash_child_sick',
+                title: '📉 股市大崩盤，同時孩子生病',
+                desc: '股市近期暴跌 40%，此時孩子突然生病，手術費需要你現有資金的 60%。你手上的股票若現在賣出會大幅虧損…',
+                choices: [
+                    { text: '🏥 賣股支付手術費（虧損但保命）', effect: { cashPercent: -0.6, investMultiplier: 0.6 } },
+                    { text: '🏦 貸款支付（保住股票，增加負債）', effect: { debt: 800 }, dynamicDebt: true },
+                    { text: '⏳ 先觀望股市回升再決定（風險高）', effect: { luck: -2, cash: -200 } }
+                ],
+                condition: (player) => player.familyStatus === 'parent',
+                knowledgeTip: '🔑 緊急預備金的重要性！財務規劃中建議保留 3~6 個月生活費的現金作為緊急準備，避免在市場低點被迫賣出資產。這就是「流動性風險」的真實教訓。'
+            },
+
+            {
+                id: 'housing_market_crash',
+                title: '🏠 房市大跌 30%，你持有房產',
+                desc: '全台房市因升息大跌 30%，你名下的房子市值縮水了，每月還要繳貸款。現在該怎麼辦？',
+                choices: [
+                    { text: '🏠 硬撐不賣（持有等待回升）', effect: { perseverance: 1 } },
+                    { text: '📉 低價賣出止損，回收資金再投資', effect: { cash: 1500, debt: -2000 } },
+                    { text: '🏘️ 轉為出租，每月收被動租金', effect: { incomeBonus: 80 } }
+                ],
+                condition: (player) => player.hasProperty,
+                knowledgeTip: '🔑 房地產是「非流動資產」，不適合短期操作。好的策略是看現金流：若出租收益能覆蓋貸款利息，持有通常優於認賠賣出。資產 vs. 負債的關鍵在於它是否能為你帶來收入。'
+            },
+
+            {
+                id: 'inflation_crisis',
+                title: '📈 通膨飆升 8%，現金購買力大跌',
+                desc: '近期通膨率高達 8%，你的現金存款每年實際上縮水 8%。該怎麼辦？',
+                choices: [
+                    { text: '💰 繼續放銀行定存（安全但虧損）', effect: { wisdom: -1 } },
+                    { text: '📊 轉投資指數型基金（長期抗通膨）', effect: { cash: -300, wisdom: 2 }, startup: true, startupChance: 0.8 },
+                    { text: '🥇 買黃金/實物資產保值', effect: { cash: -200, luck: 1, wisdom: 1 } }
+                ],
+                knowledgeTip: '🔑 通貨膨脹是儲蓄者的隱形敵人。若年通膨 8%，放在銀行利率 1% 的錢，實際購買力每年縮水約 7%。長期持有股票指數基金（如 ETF）的年報酬率歷史上平均約 7~10%，是對抗通膨的好工具。'
+            },
+
+            {
+                id: 'crypto_crash',
+                title: '💸 虛擬貨幣暴跌 80%',
+                desc: '你的朋友極力推薦的虛擬貨幣，昨天突然暴跌 80%。你之前也跟著買了一些，現在怎麼辦？',
+                choices: [
+                    { text: '🔥 全部賣出認賠（拿回剩餘資金）', effect: { cash: 100, investMultiplier: 0.2, wisdom: 1 } },
+                    { text: '📈 繼續持有賭反彈（高風險）', effect: { luck: -1 } },
+                    { text: '🤦 加倉攤平（危險操作）', effect: { cash: -300, luck: -2 } }
+                ],
+                knowledgeTip: '🔑 加密貨幣屬於高波動性投機資產，不適合作為主要投資組合。投資前問自己：如果這筆錢歸零，我能接受嗎？「不要投入你輸不起的錢」是最基本的投資原則，分散投資可降低單一資產崩盤的衝擊。'
+            },
+
+            {
+                id: 'parents_retirement',
+                title: '👴 父母宣布退休，需要子女贍養',
+                desc: '父母同時退休，每月需要你提供生活費補貼約 150 金幣。這會大幅影響你的財務規劃…',
+                choices: [
+                    { text: '💖 全力支援（每月 150 金幣）', effect: { expenseBonus: 150, social: 2, perseverance: 1 } },
+                    { text: '🤝 協商減少（每月 80 金幣）', effect: { expenseBonus: 80, social: 1 } },
+                    { text: '😔 說明自己財務困難，暫緩', effect: { social: -1, perseverance: 1 } }
+                ],
+                knowledgeTip: '🔑 「三明治世代」是指同時要養育子女又要贍養父母的族群。財務規劃時，需要提前考慮父母的養老費用，並建議父母在有工作時即開始規劃退休金（如勞保老年給付、退休帳戶），減輕子女未來的壓力。'
+            },
+
+            {
+                id: 'job_loss_medical',
+                title: '😰 突然失業，同時面對醫療費用',
+                desc: '公司突然倒閉讓你失業，同一週你又被診斷出需要一筆治療費用。雙重衝擊下，你手上的積蓄能撐多久？',
+                choices: [
+                    { text: '🏥 優先處理醫療，動用積蓄', effect: { cashPercent: -0.5, wisdom: 1 } },
+                    { text: '🔍 先找工作，醫療分期付款', effect: { debt: 400, incomeBonus: -50 }, startupChance: 0.6, startup: true },
+                    { text: '📑 申請政府補助（失業給付+健保）', effect: { cash: 200, wisdom: 2 } }
+                ],
+                knowledgeTip: '🔑 緊急預備金與保險是財務安全網的兩大支柱。建議持有 3~6 個月生活費的流動資金，並確保有健保（重大疾病險）與失業保險的保障。失業時可申請勞保失業給付，最長可領 6 個月。'
+            },
+
+            {
+                id: 'earthquake_damage',
+                title: '🏚️ 地震造成房屋損壞',
+                desc: '一場地震讓你的房屋牆壁出現裂縫，修繕費用估計要 600 金幣。有買地震險嗎？',
+                choices: [
+                    { text: '✅ 有買地震險，申請理賠', effect: { cash: 300, wisdom: 1 } },
+                    { text: '💸 沒有保險，自費修繕', effect: { cash: -600 } },
+                    { text: '⏳ 先暫時居住，延後修繕', effect: { luck: -1, cash: -100 } }
+                ],
+                knowledgeTip: '🔑 台灣位於地震帶，地震險是相當重要的保障。「住宅地震基本保險」每年保費不到 2000 元，最高理賠 150 萬，是高CP值的保險。保險的核心邏輯是：用小額固定支出，換取低機率但高損失風險的保障。'
+            },
+
+            {
+                id: 'startup_failure',
+                title: '💀 創業失敗，債主上門',
+                desc: '你投資的朋友創業公司宣告倒閉，除了損失投入的資金，還有你保證的連帶債務需要處理…',
+                choices: [
+                    { text: '⚖️ 與律師協商，制定還款計畫', effect: { cash: -200, debt: 600, wisdom: 2 } },
+                    { text: '🏃 用積蓄快速償清債務', effect: { cashPercent: -0.4, debt: 0 } },
+                    { text: '📋 申請個人破產保護（最後手段）', effect: { debt: -1000, cash: -500, social: -3, wisdom: 3 } }
+                ],
+                knowledgeTip: '🔑 投資前做好盡職調查（Due Diligence）！對他人貸款或當保人風險極高——別人倒了，你也要負責。創業投資應有「最多損失全部」的心理準備，並設定停損點。不要投入超過你能承受損失的金額。'
+            },
+
+            {
+                id: 'tax_audit',
+                title: '🔍 稅務稽查，有未申報收入',
+                desc: '國稅局寄來稽查通知，指出你有未申報的兼職收入，需要補繳稅款加上罰款。',
+                choices: [
+                    { text: '📝 誠實補繳稅款（罰款較低）', effect: { cash: -300, wisdom: 2 } },
+                    { text: '👨‍⚖️ 聘請稅務律師協商', effect: { cash: -200, wisdom: 1 } },
+                    { text: '😤 硬撐不繳（後果嚴重）', effect: { cash: -600, social: -2, luck: -2 } }
+                ],
+                knowledgeTip: '🔑 誠實報稅是公民義務，也是財務健全的基礎。各類收入（薪資、兼職、投資利得）都需申報。合法節稅和逃稅是完全不同的概念：前者是善用法規（如退休金、捐款抵稅）；後者面臨法律風險。聘請合格會計師可幫你合法省稅。'
+            },
+
+            {
+                id: 'unexpected_pregnancy',
+                title: '🍼 意外迎來新生命',
+                desc: '計劃外的寶寶即將誕生！孕期與育兒費用預估需要 800 金幣，同時你的工作也需要調整。',
+                choices: [
+                    { text: '❤️ 全心迎接，調整財務計畫', effect: { cash: -400, familyStatus: 'parent', expenseBonus: 200, perseverance: 3 } },
+                    { text: '📊 仔細規劃，申請育兒補助', effect: { cash: -200, familyStatus: 'parent', expenseBonus: 150, wisdom: 2 } }
+                ],
+                knowledgeTip: '🔑 迎接新生命前，建議評估「生育成本」：台灣一個孩子從出生到大學的養育費用估計超過 500 萬元。政府有多項育兒補助可申請（育兒津貼、育嬰假、托育補助），善用這些資源可大幅減輕負擔。'
+            },
+
+            {
+                id: 'divorce_cost',
+                title: '💔 婚姻關係出現危機',
+                desc: '婚姻觸礁，可能面臨離婚。除了情感衝擊，財產分配、子女監護費用也需要考慮。',
+                choices: [
+                    { text: '🤝 協議離婚（較省費用）', effect: { cash: -500, familyStatus: 'single', expenseBonus: -100, social: -1 } },
+                    { text: '👨‍👩‍👧 尋求家庭諮商，努力修復', effect: { cash: -200, social: 2, wisdom: 1 } },
+                    { text: '⚖️ 訴訟離婚（費時費錢）', effect: { cash: -1000, familyStatus: 'single', debt: 500, wisdom: 2 } }
+                ],
+                condition: (player) => player.familyStatus === 'married',
+                knowledgeTip: '🔑 婚前財產協議（婚前協議書）可以清楚界定財產歸屬，降低離婚糾紛。婚後建議夫妻共同規劃財務，分配家庭帳戶（生活費）、個人帳戶（自由支配）和投資帳戶，培養財務透明度。'
+            },
+
+            {
+                id: 'market_bubble_warning',
+                title: '⚠️ 分析師警告市場泡沫',
+                desc: '知名分析師發出警告，認為股市可能存在泡沫即將破裂，但也有人認為牛市仍將持續。你選擇？',
+                choices: [
+                    { text: '📉 相信預警，出售部分股票保守操作', effect: { investMultiplier: 0.8, wisdom: 1 }, startup: true, startupChance: 0.5 },
+                    { text: '📊 維持現有配置，長期持有不動', effect: { perseverance: 2 } },
+                    { text: '🚀 逆向思考，加碼買進', effect: { cash: -400 }, startup: true, startupChance: 0.4 }
+                ],
+                knowledgeTip: '🔑 「市場時機」是投資中最難的事！研究顯示，長期投資者試圖「逃頂進谷」往往比不上持續定期定額投資。巴菲特名言：「在別人恐懼時貪婪，在別人貪婪時恐懼。」長期投資最重要的是「時間在市場」，而非「擇時進出市場」。'
+            },
+
+            {
+                id: 'inheritance_dispute',
+                title: '💎 意外繼承遺產，但有糾紛',
+                desc: '遠親過世，留下一筆遺產，但其他親屬也有繼承權，可能需要對簿公堂才能獲得你的份額。',
+                choices: [
+                    { text: '⚖️ 聘請律師爭取完整繼承', effect: { cash: -300, wisdom: 1 }, startup: true, startupChance: 0.6 },
+                    { text: '🤝 協議均分，快速了結', effect: { cash: 400, social: 1 } },
+                    { text: '💸 放棄繼承（省去麻煩）', effect: { wisdom: 1, luck: -1 } }
+                ],
+                knowledgeTip: '🔑 遺產規劃的重要性！立遺囑可以清楚說明財產分配意願，避免後代紛爭。台灣《民法》有「特留分」制度保障繼承人的最低繼承比例。贈與稅、遺產稅的合法安排，可大幅減少財富移轉的稅務成本。'
+            },
+
+            {
+                id: 'passive_income_opportunity',
+                title: '💡 創造被動收入的機會',
+                desc: '朋友介紹你購買出租套房，頭期款 800 金幣，每月可收取租金 100 金幣，投資報酬率約 15%。',
+                choices: [
+                    { text: '🏘️ 投資出租套房（需要頭期款）', effect: { cash: -800, incomeBonus: 100 }, condition: (p) => p.cash >= 800 },
+                    { text: '📖 先研究房地產投資學習', effect: { wisdom: 2, cash: -50 } },
+                    { text: '⏳ 等待更好的機會', effect: {} }
+                ],
+                condition: (player) => player.currentRound >= 12,
+                knowledgeTip: '🔑 被動收入是財務自由的關鍵！當被動收入 > 生活支出，你就達到「財務自由」。常見種類：租金收入、股息、版稅、網路廣告收入。出租房產的「租金投報率」=每年租金淨收入÷購買成本，台灣平均約 2~3%，需仔細評估。'
+            },
+
+            {
+                id: 'college_fund_dilemma',
+                title: '🎓 孩子的大學教育基金',
+                desc: '孩子還有 10 年就要上大學，大學四年費用估計需要 600 金幣。現在就要開始存嗎？',
+                choices: [
+                    { text: '📊 現在開始每月定期定額投資（100/月）', effect: { expenseBonus: 100, wisdom: 2, perseverance: 2 } },
+                    { text: '🏦 一次存入教育基金帳戶（500）', effect: { cash: -500, wisdom: 3 }, condition: (p) => p.cash >= 500 },
+                    { text: '⏳ 等以後收入更多再說', effect: { luck: -1 } }
+                ],
+                condition: (player) => player.familyStatus === 'parent',
+                knowledgeTip: '🔑 複利的威力！現在每月投資 100 金幣，10 年後（假設年報酬 7%）將成長為約 1740 金幣。等 5 年後才開始存，同樣每月 100 金幣，只能累積約 732 金幣。「越早開始，越少痛苦」是複利的精髓。'
+            },
+
+            {
+                id: 'windfall_decision',
+                title: '🎰 意外獲得一大筆橫財',
+                desc: '你购彩中了大獎！獲得 2000 金幣的意外之財。這筆錢應該怎麼用最聰明？',
+                choices: [
+                    { text: '🎉 全部揮霍享受人生（消費）', effect: { cash: 2000, social: 3, luck: -1 } },
+                    { text: '📊 50%投資 + 30%還債 + 20%消費', effect: { cash: 400, debt: -600 }, startup: true, startupChance: 0.7 },
+                    { text: '💰 全部存入投資帳戶（長期增值）', effect: { wisdom: 3, perseverance: 2 }, startup: true, startupChance: 0.8 }
+                ],
+                knowledgeTip: '🔑 橫財管理 50/30/20 法則的應用：遇到意外之財，推薦：50%用於投資/理財→長期增值；30%用於還清高利率負債→節省利息；20%放鬆享受→心理健康。「享樂主義適應」告訴我們，消費帶來的快樂往往快速消退，而投資的複利效果是永久的。'
+            },
+
+            {
+                id: 'retirement_plan',
+                title: '🏖️ 規劃退休時間表',
+                desc: '你開始認真思考退休計畫。根據目前的財務狀況，你打算如何規劃退休？',
+                choices: [
+                    { text: '📊 按 4% 法則計算，積極存退休金', effect: { expenseBonus: 200, perseverance: 3, wisdom: 2 } },
+                    { text: '🏠 買房出租，靠租金退休', effect: { cash: -500, incomeBonus: 80, wisdom: 1 } },
+                    { text: '💰 開始購買年金保險', effect: { expenseBonus: 100, luck: 1, wisdom: 1 } }
+                ],
+                condition: (player) => player.currentRound >= 18,
+                knowledgeTip: '🔑「4% 法則」：若你的資產是年支出的 25 倍，你可以每年提取 4% 生活，歷史上資金能支撐 30 年以上。例如：年支出 60 萬，需儲蓄 1500 萬。這說明了財務獨立/提早退休（FIRE 運動）的核心邏輯：降低支出和提高儲蓄率，是最有效的加速方式。'
             }
         ]
     },

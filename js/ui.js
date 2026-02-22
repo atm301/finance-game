@@ -232,6 +232,15 @@ const UI = {
             html += `<p style="color: var(--accent-green); margin-top: 12px;">🛡️ 保險已減輕損失！</p>`;
         }
 
+        // 📚 財商知識說明框（knowledgeTip）
+        if (event.knowledgeTip) {
+            html += `
+                <div style="margin-top:16px; padding:12px 16px; background:linear-gradient(135deg,rgba(251,191,36,0.12),rgba(245,158,11,0.08));
+                     border:1px solid rgba(251,191,36,0.3); border-radius:12px; font-size:0.82rem; line-height:1.7; color:var(--accent-gold);">
+                    <strong>📚 財商知識：</strong><br>${event.knowledgeTip}
+                </div>`;
+        }
+
         html += `</div>`;
         eventArea.innerHTML = html;
     },

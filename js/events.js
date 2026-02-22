@@ -139,10 +139,17 @@ const Events = {
 
         const result = {};
 
+        // 處理現金按比例變動（如：cashPercent: -0.6 = 扣掉60%現金）
+        if (effect.cashPercent !== undefined) {
+            const amount = Math.floor(player.cash * effect.cashPercent);
+            player.addCash(amount);
+            result.cash = amount;
+        }
+
         // 處理現金變動
         if (effect.cash) {
             player.addCash(effect.cash);
-            result.cash = effect.cash;
+            result.cash = (result.cash || 0) + effect.cash;
         }
 
         // 處理投資乘數

@@ -393,7 +393,7 @@ class Game {
                 this.player.actionsThisRound--; // 退回行動次數
         }
 
-        UI.updateActionsRemaining(this.player);
+        this.updateActionButtons(); // 統一行動次數顯示
     }
 
     handleLoan() {
@@ -415,7 +415,7 @@ class Game {
         if (p.debt <= 0) {
             this.showMessage('✅ 無負債', '你目前沒有任何負債，繼續保持良好財務狀態！');
             p.actionsThisRound--;
-            UI.updateActionsRemaining(p);
+            this.updateActionButtons();
             return;
         }
         if (p.cash <= 0) {
@@ -905,9 +905,21 @@ class Game {
             return `<button class="btn btn-secondary save-slot-btn" data-slot="${s.slotId}">💾 存檔槽 ${s.slotId}：${s.label}${timeStr}<br><small style="color:var(--accent-gold);">淨值 ${Math.round(s.netWorth)}</small></button>`;
         }).join('');
 
+        // BGM 風格選項
+        const bgmStyles = AudioManager.bgmStyles || {};
+        const currentStyle = AudioManager.currentBGMStyle || 'cozy';
+        const bgmOptions = Object.entries(bgmStyles).map(([id, info]) =>
+            `<option value="${id}" ${id === currentStyle ? 'selected' : ''}>${info.label} — ${info.desc}</option>`
+        ).join('');
+
         UI.showModal(`
             <h3 style="text-align:center; margin-bottom:20px;">⚙️ 設定選單</h3>
             <div style="display:flex; flex-direction:column; gap:12px;">
+                <h4 style="color:var(--accent-gold); margin:0;">🎵 背景音樂風格</h4>
+                <select id="bgm-style-select" style="padding:10px; border-radius:10px; border:2px solid var(--primary-color); background:rgba(255,255,255,0.08); color:var(--text-primary); font-size:0.9rem;">
+                    ${bgmOptions}
+                </select>
+                <hr style="border-color:rgba(255,255,255,0.1);">
                 <h4 style="color:var(--accent-gold); margin:0;">💾 手動存檔</h4>
                 ${slotHTML}
                 <hr style="border-color:rgba(255,255,255,0.1);">
@@ -919,6 +931,12 @@ class Game {
         `);
 
         setTimeout(() => {
+            // BGM 風格切換
+            document.getElementById('bgm-style-select')?.addEventListener('change', (e) => {
+                AudioManager.setBGMStyle(e.target.value);
+                AudioManager.play('click');
+            });
+
             document.querySelectorAll('.save-slot-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const slotId = parseInt(btn.dataset.slot);
